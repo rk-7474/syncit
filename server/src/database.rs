@@ -18,11 +18,18 @@ impl Database {
     }
 
     pub fn get_drawer(&mut self, drawer: String) -> String {
-        let mut result: Row = self.conn.query_first(
+        let query = self.conn.query_first(
             format!("SELECT data FROM drawers WHERE name = '{}'", drawer)
-        ).unwrap().unwrap();
+        ).unwrap();
 
-        return result.take("data").unwrap();
+        let mut result: Row;
+
+        if query != None {
+            result = query.unwrap();
+            return result.take("data").unwrap();
+        }
+
+        return "".to_string();
     }
 
     pub fn get_file(&mut self, id: String) -> Vec<u8> {
@@ -33,18 +40,28 @@ impl Database {
         return result.take("buffer").unwrap();
     }
 
-    pub fn update_drawer(&mut self, id: String, data: serde_json::Value) -> mysql::Result<()> {
-        self.conn.exec_drop(
-            "INSERT INTO drawers (id, data) values (?, ?) ON DUPLICATE KEY UPDATE data = ?",
+    pub fn update_drawer(&mut self, id: String, data: String) {
+        let response = self.conn.exec_drop(
+            "INSERT INTO drawers (name, data) values (?, ?) ON DUPLICATE KEY UPDATE data = ?",
             (id, data.clone(), data)
-        )
+        );
+
+        if let Err(e) = response {
+            eprintln!("Failed to update file: {}", e);
+        }
     }
 
-    pub fn update_file(&mut self, id: String, buffer: Vec<u8>) -> mysql::Result<()> {
-        self.conn.exec_drop(
-            "INSERT INTO files (id, buffer) values (?, ?) ON DUPLICATE KEY UPDATE data = ?",
+    pub fn update_file(&mut self, id: String, buffer: Vec<u8>) {
+        
+        let response = self.conn.exec_drop(
+            "INSERT INTO files (id, buffer) values (?, ?) ON DUPLICATE KEY UPDATE buffer = ?",
             (id, buffer.clone(), buffer)
-        )
+        );
+
+        if let Err(e) = response {
+            eprintln!("Failed to update file: {}", e);
+        }
+
     }
 }
 

@@ -1,0 +1,6 @@
+@ignores
+.git
+.gitignore
+target
+
+@debug

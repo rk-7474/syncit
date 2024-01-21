@@ -1,26 +1,52 @@
+use std::path::Path;
+use std::fs::{File, read_to_string};
+use std::io::prelude::*;
+
 pub fn get_ignores() -> Vec<String> {
-    let data = get_sync_file().read_lines();
-    let ignores: Vec<String> = Vec::new();
-    for line in data {
+    let ignores_string = get_sync_part("ignores");
+
+    let mut ignores: Vec<String> = Vec::new();
+    for line in ignores_string.lines() {
         ignores.push(line.to_string());
     }
+
     return ignores;
 }
 
+pub fn get_location() -> String {
+    let location = get_sync_part("location");
+
+    return location.lines().nth(1).unwrap().to_string();
+}
+
+pub fn is_debugging() -> String {
+    let location = get_sync_part("location");
+
+    return location.lines().nth(1).unwrap().to_string();
+}
+
 fn get_sync_file() -> String {
-    if !Path::new("/etc/hosts").exists() {
+    if !Path::new(".sync").exists() {
         return create_sync_file();
     } 
-    let mut file = File::open(".sync").unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-
-    return contents;
+    return read_to_string(".sync").unwrap();
 }
 
 fn create_sync_file() -> String {
-    let mut file = File::create(".sync")?;
-    let string = ".git\n.gitignore\ntarget".to_string();
-    file.write_all(string)?;
+    let mut file = File::create(".sync").unwrap();
+    let string: String = ".git\n.gitignore\ntarget".to_string();
+    let _ = file.write(string.as_bytes());
     return string;
+}
+
+fn get_sync_part(key: &str) -> String {
+    let file = get_sync_file();
+    let parts = file.split("@");
+    
+    for part in parts {
+        if part.contains(key) {
+            return part.to_string();
+        }
+    }
+    return "".to_string();
 }
