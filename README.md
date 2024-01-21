@@ -7,7 +7,7 @@ Syncit is a folder sharing system i built myself, written completely in rust. It
 > `syncit send <path>`
 
 Creates or uploads the folder contents to a drawer named as the last subfolder in the given path (or the current folder name if no path is given). \
-*E.g*: `syncit send ../closet` will load the content in the folder at `../closet` in a drawer named `closet`.
+*E.g.*: `syncit send ~/desktop/closet` will load the content in the folder at `~/desktop/closet` in a drawer named `closet`.
 
 > `syncit get <path>`
 
@@ -33,7 +33,8 @@ The default config file will contain ignores for `.git` folder and `.gitignore` 
 
 ### TODOs (in order of importance):
 - Account and permissions system, to share and crypt files, and to give permissions to friends to edit your drawer (probably with `perm` command).
-- A `way` command to select drawer name and owner user and set it to the config file, if i don't want to use the current folder as drawer name. (E.g. if I have the permissions to edit it, `syncit way bob:closet` will set the project location to *bob*'s drawer named *closet*)
+- A `way` command to select drawer name and owner user and set it to the config file, if I don't want to use the current folder as drawer name. (E.g. if I have the permissions to edit it, `syncit way bob:closet` will set the project location to *bob*'s drawer named *closet*)
+- An edit history system with backups, important for shared projects.
 - A GUI (maybe in tauri) for a better managment of permissions, drawers, and for file listing without downloading drawers.
 - An optional commit system: Every user sharing a drawer will have his own drawer version, and the `send` command will update my own version of the drawer. Only on `commit` the changes will be made visible to the shared version.
 - A branch system, maybe with `syncit branch <name>` accessible with `syncit switch <name>`.
