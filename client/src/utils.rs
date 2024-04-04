@@ -8,7 +8,7 @@ pub fn get_files(path: String, ignores: Vec<String>) -> Vec<String> {
     fn recursive(path: &String, file_paths: &mut Vec<String>, ignores: &Vec<String>) {
         let paths = fs::read_dir(path).unwrap();
         
-        if ignores.iter().any(|i| format!("./{}", i) == *path) {return}
+        if ignores.iter().any(|i| format!("./{i}") == *path) {return}
         for file in paths {
             let entry = file.unwrap();
             let path = &entry.path().display().to_string();

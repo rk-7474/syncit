@@ -12,7 +12,9 @@ pub async fn send(drawer: &str, path: String) -> Result<(), reqwest::Error> {
     let data_map: HashMap<String, Vec<u8>> = utils::load_files(files);
     let response = api::send_bytes(data_map, drawer).await;
     
-    println!("Drawer sended.");
+    if !response.is_err() {
+        println!("Drawer sended.");
+    }
 
     return response;
 }
