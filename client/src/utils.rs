@@ -2,7 +2,7 @@ use std::fs;
 use std::collections::HashMap;
 use crate::blob;
 
-pub fn get_files(path: String, ignores: Vec<String>) -> Vec<String> {
+pub fn list_files(path: String, ignores: Vec<String>) -> Vec<String> {
     let mut file_paths: Vec<String> = Vec::new();
 
     fn recursive(path: &String, file_paths: &mut Vec<String>, ignores: &Vec<String>) {
@@ -34,7 +34,7 @@ pub fn load_files(files: Vec<String>) -> HashMap<String, Vec<u8>> {
     let mut data_map: HashMap<String, Vec<u8>> = HashMap::new();
     
     for path in files {        
-        let buffer: Vec<u8> = blob::get_bytes(&path);
+        let buffer: Vec<u8> = blob::file_to_bytes(&path);
         data_map.insert(path, buffer);
     }
 

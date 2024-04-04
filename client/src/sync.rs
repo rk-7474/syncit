@@ -4,23 +4,29 @@ use crate::utils;
 use crate::project;
 
 
-pub async fn send(drawer: &str, path: String) -> Result<(), reqwest::Error> {
+pub async fn send(drawer: &str, path: String) -> Result<reqwest::Response, reqwest::Error> {
     println!("Creating drawer {drawer} at {path}");
     let ignores = project::get_ignores();
-    let files: Vec<String> = utils::get_files(path.clone(), ignores); 
+    let files: Vec<String> = utils::list_files(path.clone(), ignores); 
 
     let data_map: HashMap<String, Vec<u8>> = utils::load_files(files);
-    let response = api::send_bytes(data_map, drawer).await;
+    let response = api::upload(data_map, drawer).await;
     
     if !response.is_err() {
         println!("Drawer sended.");
-    }
+    }   
 
     return response;
 }
 
 pub async fn get(drawer: &str, path: String) -> Result<(), reqwest::Error> {
-    let response = api::get_bytes(drawer).await;
+    let response = api::download(drawer).await;
+
+    if let Err(e) = response { 
+        return Err(e);
+    }   
+
+    println!("Drawer acquired.");
 
     println!("Loading drawer {drawer} at {path}");
     let json = response?.text();
@@ -32,7 +38,7 @@ pub async fn get(drawer: &str, path: String) -> Result<(), reqwest::Error> {
         utils::create_path(&f_path, buffer);
     }
 
-    println!("Drawer acquired.");
+    println!("Drawer loaded.");
 
     Ok(())
 }

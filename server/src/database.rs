@@ -1,23 +1,32 @@
 use mysql::*;
 use mysql::prelude::*;
-use serde_derive::Deserialize;
+use tide::Request;
+use std::sync::{Arc, Mutex, MutexGuard};
 extern crate serde_qs as qs;
+use std::fmt::{Debug, Display};
 
 pub struct Database {
     pub conn: PooledConn
 }
 
+#[derive(Clone)]
+pub struct State {
+    db: Arc<Mutex<Database>>,
+}
+
 impl Database {
-    pub fn init() -> Database {
+    pub fn init() -> State {
         let url = "mysql://root:@localhost/syncit";
         let pool = Pool::new(url).unwrap();
         let conn = pool.get_conn().unwrap();
-        return Database {
-            conn: conn
-        }
+        let db = Database { conn };
+        let db_state: State = State { 
+            db: Arc::new(Mutex::new(db))
+        };
+        return db_state;
     }
 
-    pub fn get_drawer(&mut self, drawer: String) -> String {
+    pub fn get_drawer(&mut self, drawer: String) -> Result<String, String> {
         let query = self.conn.query_first(
             format!("SELECT data FROM drawers WHERE name = '{}'", drawer)
         ).unwrap();
@@ -26,10 +35,10 @@ impl Database {
 
         if query != None {
             result = query.unwrap();
-            return result.take("data").unwrap();
+            return Ok(result.take("data").unwrap());
         }
 
-        return "".to_string();
+        return Err("Drawer not found".to_string());
     }
 
     pub fn get_file(&mut self, id: String) -> Vec<u8> {
@@ -63,9 +72,42 @@ impl Database {
         }
 
     }
+
+    pub fn user_exists(&mut self, username: String) -> bool {
+        let result: Row = self.conn.query_first(
+            format!("SELECT EXISTS(SELECT 1 FROM users WHERE username = '{username}')")
+        ).unwrap().unwrap();
+        
+        return result.get::<bool, usize>(0).unwrap();
+    }
+
+    pub fn create_user(&mut self, auth_data: serde_json::Value) -> bool {
+        let result: Row = self.conn.query_first(
+            format!("INSERT INTO users (username, password) values ('{}', '{}')", auth_data["username"].to_string(), auth_data["password"].to_string())
+        ).unwrap().unwrap();
+        
+        // return result.get::<bool, usize>(0).unwrap();
+    }
+
+    pub fn login(&mut self, auth_data: serde_json::Value) -> bool {
+        let result: Row = self.conn.query_first(
+            format!("SELECT password FROM users WHERE username = ('{}')", auth_data["username"].to_string())
+        ).unwrap().unwrap();
+        
+        // return result.get::<bool, usize>(0).unwrap();
+    }
 }
 
-#[derive(Default, Deserialize)]
-pub struct GetQuery {
-    pub id: String,
+
+pub fn get_db<'a>(req: &'a Request<State>) -> MutexGuard<'a, Database> {
+    let state = req.state();
+    let db = state.db.lock();
+    
+    let db_guard: MutexGuard<'a, Database> = match db {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    return db_guard;
 }
+

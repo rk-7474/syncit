@@ -1,10 +1,10 @@
 use reqwest;
-use serde_json;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 
 const ENDPOINT: &'static str = "http://localhost:8080";
 
-pub async fn send_bytes(data_map: HashMap<String, Vec<u8>>, drawer: &str) -> Result<(), reqwest::Error> {
+pub async fn upload(data_map: HashMap<String, Vec<u8>>, drawer: &str) -> Result<reqwest::Response, reqwest::Error> {
     let url: String = format!("{}/create?id={}", ENDPOINT, drawer);
 
     println!("Sending data...");
@@ -17,14 +17,10 @@ pub async fn send_bytes(data_map: HashMap<String, Vec<u8>>, drawer: &str) -> Res
         .body(json_encoded)
         .send().await;
 
-    if let Err(e) = response {
-        return Err(e);
-    }    
-
-    Ok(())
+    return response;
 }
 
-pub async fn get_bytes(drawer: &str) -> Result<reqwest::Response, reqwest::Error> {
+pub async fn download(drawer: &str) -> Result<reqwest::Response, reqwest::Error> {
     let url: String = format!("{}/get?id={}", ENDPOINT, drawer);
 
     println!("Getting data...");
@@ -37,3 +33,17 @@ pub async fn get_bytes(drawer: &str) -> Result<reqwest::Response, reqwest::Error
     
     return response;
 }
+
+pub async fn login(token: String) -> Result<reqwest::Response, reqwest::Error> {
+    let url: String = format!("{}/login", ENDPOINT);
+    println!("Logging in...");
+    
+    let client: reqwest::Client = reqwest::Client::new();
+    let response = 
+        client.post(url)
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .body(auth_data.to_string())
+        .send().await;
+
+    return response;
+} 
