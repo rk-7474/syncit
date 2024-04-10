@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use crate::api;
 use crate::utils;
 use crate::project;
+use crate::auth;
 
 
 pub async fn send(drawer: &str, path: String) -> Result<reqwest::Response, reqwest::Error> {

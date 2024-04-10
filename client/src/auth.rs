@@ -1,7 +1,7 @@
-use std::io::{stdin,stdout,Write};
-use reqwest::Response;
-use serde_json::json;
-use crate::api;
+use std::sync::Mutex;
+use std::fs::{create_dir_all, File, read_to_string}; 
+use std::io::{stdin, stdout, Write};
+use std::path::Path;
 
 // pub async fn login() -> Result<Response, String> {
 //     let mut username = String::new();
@@ -28,20 +28,39 @@ use crate::api;
 //     return Ok(response.unwrap());
 // }
 
+const BASE_PATH: &str = "~/syncit";
 
-pub async fn login() -> Result<Response, String> {
+fn save_token(token: &String) -> std::io::Result<()> {
+    create_dir_all(BASE_PATH).unwrap();
+    let mut file = File::create(".db").unwrap();
+    file.write(token.as_bytes())?;
+
+    Ok(())
+}
+
+pub async fn set_token() -> std::io::Result<()> {
     let mut token = String::new();
 
     print!("Insert auth token: ");
     let _ = stdout().flush();
-    stdin().read_line(&mut token).expect("Invalid input");  
+    stdin().read_line(&mut token)?;  
 
-    let response = api::login(token).await;
-    
-    if response.is_err() {
-        return Err("Invalid request".to_string());
-    }   
+    save_token(&token)?;
 
-    return Ok(response.unwrap());
+    Ok(())
+}
+
+pub fn read_token() -> String {
+    let db_file = format!("{BASE_PATH}/.db");
+
+    if !Path::new(&db_file).exists() {
+        return String::new();
+    } 
+
+    let str = read_to_string(db_file).unwrap();
+
+    println!("Token: \"{str}\"");
+
+    str
 }
 

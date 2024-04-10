@@ -47,3 +47,4 @@ pub fn create_path(path: &str, buffer: Vec<u8>) {
     fs::create_dir_all(folders.0).unwrap();
     fs::write(path, buffer).unwrap();
 }
+
