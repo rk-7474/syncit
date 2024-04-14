@@ -3,7 +3,7 @@ use mysql::prelude::*;
 use tide::Request;
 use std::sync::{Arc, Mutex, MutexGuard};
 extern crate serde_qs as qs;
-use std::fmt::{Debug, Display};
+use pwhash::bcrypt;
 
 pub struct Database {
     pub conn: PooledConn
@@ -82,19 +82,33 @@ impl Database {
     }
 
     pub fn create_user(&mut self, auth_data: serde_json::Value) -> bool {
-        let result: Row = self.conn.query_first(
-            format!("INSERT INTO users (username, password) values ('{}', '{}')", auth_data["username"].to_string(), auth_data["password"].to_string())
+        let hashed_password = bcrypt::hash(auth_data["password"].to_string()).unwrap();
+        let username = auth_data["username"].to_string();
+
+        let _: Row = self.conn.query_first(
+            format!("INSERT INTO users (username, password) values ('{}', '{}')", username, hashed_password)
         ).unwrap().unwrap();
-        
-        // return result.get::<bool, usize>(0).unwrap();
+
+        true
     }
 
-    pub fn login(&mut self, auth_data: serde_json::Value) -> bool {
+    pub fn login_user(&mut self, auth_data: serde_json::Value) -> bool {
+        let username = auth_data["username"].to_string();
+        let password = auth_data["password"].to_string();
+
         let result: Row = self.conn.query_first(
-            format!("SELECT password FROM users WHERE username = ('{}')", auth_data["username"].to_string())
+            format!("SELECT password FROM users WHERE username '{}'", username)
+        ).unwrap().unwrap();
+
+        bcrypt::verify(password, &result.get::<String, usize>(0).unwrap())
+    }   
+
+    pub fn validate_token(&mut self, token: String) -> bool {
+        let result: Row = self.conn.query_first(
+            format!("SELECT EXISTS(SELECT 1 FROM sessions WHERE token = '{token}')")
         ).unwrap().unwrap();
         
-        // return result.get::<bool, usize>(0).unwrap();
+        return result.get::<bool, usize>(0).unwrap();
     }
 }
 

@@ -2,7 +2,6 @@ use tide::{Request, Response};
 use std::collections::HashMap;
 use server::database::{Database, State};
 use server::database;
-use server::auth;
 use serde_derive::Deserialize;
 use serde_json::{Value, Map};
 use uuid::Uuid;
@@ -21,6 +20,8 @@ async fn main() -> tide::Result<()> {
     app.at("/get").get(get);
     app.at("/update").post(update);
     app.at("/login").post(login);
+    app.at("/token").post(token);
+    app.at("/register").post(register);
     println!("Listening on http://127.0.0.1:8080");
     app.listen("127.0.0.1:8080").await?;
     Ok(())  
@@ -90,43 +91,40 @@ async fn get(req: Request<State>) -> tide::Result {
 }
 
 
-async fn login(req: Request<State>) -> tide::Result {
+async fn register(mut req: Request<State>) -> tide::Result {
     let auth_data: Value = req.body_json().await?;
     let mut db = database::get_db(&req);
 
-    println!("Checking for account drawer {}...", auth_data["username"]);
+    let username = auth_data["username"].to_string();
 
-    let does_user_exist = db.user_exists(auth_data["username"].to_string());
+    println!("Registering account {}...", &username);
 
-    if does_user_exist {
-        db.create_user(auth_data);
-    } else {
-        db.login(auth_data);
+    if db.user_exists(username) {
+        return Err(tide::Error::from_str(409, "User already exists".to_string()));
     }
 
-    let drawer_data = response.unwrap();
+    db.create_user(auth_data);
 
-    let json_map: Value = serde_json::from_str(&drawer_data).unwrap();
-
-    let data_map: Map<String, Value> = serde_json::from_value(json_map).unwrap();
-
-    let mut return_map: HashMap<String, Vec<u8>> = HashMap::new();
-
-    for (path, id) in data_map {
-        let buffer = db.get_file(serde_json::from_value(id).unwrap());
-        return_map.insert(path, buffer);
-    }
-
-    let json_return = serde_json::to_string(&return_map).unwrap();
-
-    let response = Response::builder(200)
-        .body(json_return)
-        .content_type("application/json")
-        .build();
-
-    println!("Drawer sended.");
+    println!("Account created.");
     
-    Ok(response)
+    Ok(tide::Response::new(200))
+}
+
+async fn login(mut req: Request<State>) -> tide::Result {
+    let auth_data: Value = req.body_json().await?;
+    let mut db = database::get_db(&req);
+    let username = auth_data["username"].to_string();
+
+    println!("Logging in account {}...", &username);
+
+    if !db.user_exists(username) {
+        return Err(tide::Error::from_str(404, "User not found".to_string()));
+    }
+
+    match db.login_user(auth_data) {
+        true => return Ok(tide::Response::new(200)),
+        false => return Err(tide::Error::from_str(401, "Invalid password".to_string())),
+    }
 }
 
 async fn update(mut req: Request<State>) -> tide::Result {
@@ -136,7 +134,7 @@ async fn update(mut req: Request<State>) -> tide::Result {
     let mut db = database::get_db(&req);
 
     for (path, buffer) in data_map {
-        let file_id =  Uuid::new_v4();
+        let file_id = Uuid::new_v4();
         drawer.insert(path, file_id);
         let _ = db.update_file(file_id.to_string(), buffer);
     }
@@ -144,3 +142,16 @@ async fn update(mut req: Request<State>) -> tide::Result {
     Ok(tide::Response::new(200))
 }
 
+
+
+async fn token(mut req: Request<State>) -> tide::Result {
+    let body: Value = req.body_json().await?;
+    let mut db = database::get_db(&req);
+
+    let valid = db.validate_token(body["token"].to_string());
+
+    match valid {
+        true => Ok(tide::Response::new(200)),
+        false => Err(tide::Error::from_str(401, "Invalid token".to_string())),
+    }    
+}
