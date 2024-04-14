@@ -1,10 +1,17 @@
 use std::env;
+use syncit::auth::read_token;
 use syncit::sync;
 use syncit::auth;
 use async_std;
 
+const AUTH_COMMANDS: &'static [&'static str] = &[
+    "get", 
+    "send"
+];
+
 #[async_std::main]
 async fn main() {
+
     let mut args = env::args();
     let len = args.len();
     
@@ -34,19 +41,16 @@ async fn main() {
 
         path = "./".to_string();
     };
-    
-    match  command {
-        "send" => if is_auth() {
-            handle_result(sync::send(&drawer, path).await, "Error sending data")
-        } else {
-            println!("You must be logged in to use this command.");
-        },
-        "get" => if is_auth() {
-            handle_result(sync::get(&drawer, path).await, "Error getting data")
-        } else {
-            println!("You must be logged in to use this command.");
-        },
-        "login" => handle_result(auth::login().await, "Error logging in"),
+
+    if read_token().is_empty() && AUTH_COMMANDS.iter().any( |&i| i == command ) {
+        println!("You must be authenticated to run this command. Run `syncit token` to insert your auth token.");
+        return;
+    }
+
+    match command {
+        "send" => handle_result(sync::send(&drawer, path).await, "Error sending data"),
+        "get" => handle_result(sync::get(&drawer, path).await, "Error getting data"),
+        "token" => handle_result(auth::set_token().await, "Error while setting token"),
         _ => println!("Invalid command"),
     }
     
